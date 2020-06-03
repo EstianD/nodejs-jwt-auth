@@ -1,6 +1,8 @@
 const usersRouter = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const spawn = require("child_process").spawn;
+const axios = require("axios");
 
 // Config
 const config = require("../utils/config");
@@ -46,11 +48,24 @@ usersRouter.post("/register", async (req, res) => {
   // Save user to DB
   try {
     const savedUser = await user.save();
+
     if (savedUser) {
-      res.json({ status: true });
+      // Create collection to index photos
+      const colResponse = await axios.get(
+        `https://tvctoiq355.execute-api.eu-west-2.amazonaws.com/test/test?collectionId=${savedUser.id}`
+      );
+
+      console.log(colResponse);
+      if (colResponse.status === 200) {
+        // COllection created successfully
+        res.json({ status: true });
+      } else {
+        res.json({
+          status: false,
+          error: "Something went wrong on our side. Try again!",
+        });
+      }
     }
-    // Return MSG on successful signup
-    // res.json({ user: user._id });
   } catch (err) {
     res.json({ status: false, error: err });
   }

@@ -1,15 +1,11 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-  username: {
+const uploadSchema = new mongoose.Schema({
+  userId: {
     type: String,
     required: true,
   },
-  email: {
-    type: String,
-    required: true,
-  },
-  password: {
+  imageUrl: {
     type: String,
     required: true,
   },
@@ -19,4 +15,4 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model("Upload", uploadSchema);
