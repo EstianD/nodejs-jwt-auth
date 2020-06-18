@@ -7,45 +7,124 @@ const path = require("path");
 
 // Model
 const Upload = require("../models/Upload");
+const Profile = require("../models/Profile");
 
 // Middleware
 const verify = require("../middleware/verifyToken");
 
-// const multer = require("multer");
+// Create AWS S3 instance
+const s3 = new AWS.S3({
+  accessKeyId: config.AWS_ID,
+  secretAccessKey: config.AWS_SECRET,
+});
 
-// const storage = multer.diskStorage({
-//   destination: "./files",
-//   filename: (req, file, cb) => {
-//     cb(null, `${Date.now()}-${file.originalname}`);
-//   },
-// });
+// FUNCTIONS
+// UPLOAD FILES FUNCTION
+async function uploadFile(key, fileData, bucket) {
+  // Upload file to Bucket/key(folder)/filename
+  // Configure upload config
+  const params = {
+    Bucket: bucket,
+    Key: key,
+    Body: fileData,
+  };
+  console.log("uploading...");
+  // Upload file
+  let res = await s3.upload(params).promise();
+  console.log("uploading done");
+}
 
-// const upload = multer({ storage }).single("file");
+uploadRouter.post("/profile", verify, async (req, res) => {
+  console.log("profile section");
+  // console.log(req.files);
+  // console.log(req.body);
+  const profilename = req.body.name;
+  const file = req.files.image;
 
-uploadRouter.post("/profile", verify, (req, res) => {
-  console.log(req.files);
-  console.log(req.body);
+  console.log(profilename);
+  console.log(file);
 
-  if (req.files === null) {
-    return res.status(400).json({ msg: "No file uploaded!" });
+  const id = req.user.id;
+  const bucket = "face-watch-profiles";
+
+  if (file === null) {
+    return res.status(400).json({
+      msg: "No file uploaded!",
+    });
   }
 
-  const file = req.files.file;
+  // Save imageUrl to DB
+  const saveProfileUploadToDb = async (imgString, profileName, imgName) => {
+    // Check if file allready exists in db
+    const profileExists = await Profile.findOne({
+      profileName: profileName,
+    })
+      .where("userId")
+      .equals(req.user.id);
 
-  // Store file in /uploads folder
-  file.mv(`${process.cwd()}/uploads/${file.name}`, (err) => {
-    if (err) {
-      console.log(err);
-      return res.status(500).send(err);
+    console.log("profileExists", profileExists);
+
+    console.log("saving...");
+    if (!profileExists) {
+      // Image url ex: "https://face-watch.s3.amazonaws.com/5ebc250b315756357b7269a0/Keanu_Reeves_1.jpg"
+      const profile = new Profile({
+        userId: req.user.id,
+        profileName: profileName,
+        imageUrl: imgString,
+        imageName: imgName,
+      });
+      console.log(profile);
+
+      await profile.save();
+      return profile;
+    } else {
+      return res.json({
+        status: 401,
+        msg: "The profile already exists!",
+      });
     }
+  };
 
-    res.json({ filename: file.name, filePath: `/uploads/${file.name}` });
-  });
+  console.log("Starting...");
+
+  try {
+    let filename = file.name;
+    let filedata = file.data;
+
+    let fileExt = filename.split(".").pop();
+    let newFileName = `${req.user.id.substring(
+      0,
+      4
+    )}-${new Date().getTime()}.${fileExt}`;
+
+    let key = `${req.user.id}/${newFileName}`;
+    const imageString = `https://face-watch-profiles.s3.amazonaws.com/${key}`;
+
+    const profile = await saveProfileUploadToDb(
+      imageString,
+      profilename,
+      newFileName
+    );
+    await uploadFile(key, file.data, bucket);
+
+    return res.json({
+      status: 200,
+      msg: "success",
+      profile: profile,
+    });
+  } catch (err) {
+    res.json({
+      status: 400,
+      msg: err,
+    });
+  }
 });
 
 uploadRouter.post("/gallery", verify, async (req, res) => {
   const files = req.files;
   const id = req.user.id;
+  const bucket = "face-watch";
+
   console.log("starting");
 
   // Check if files contains data
@@ -56,29 +135,13 @@ uploadRouter.post("/gallery", verify, async (req, res) => {
   }
 
   // Create AWS S3 instance
-  const s3 = new AWS.S3({
-    accessKeyId: config.AWS_ID,
-    secretAccessKey: config.AWS_SECRET,
-  });
-
-  // FUNCTIONS
-  // UPLOAD FILES FUNCTION
-  async function uploadFile(key, fileData) {
-    // Upload file to Bucket/key(folder)/filename
-    // Configure upload config
-    const params = {
-      Bucket: "face-watch",
-      Key: key,
-      Body: fileData,
-    };
-    console.log("uploading...");
-    // Upload file
-    let res = await s3.upload(params).promise();
-    console.log("uploading done");
-  }
+  // const s3 = new AWS.S3({
+  //   accessKeyId: config.AWS_ID,
+  //   secretAccessKey: config.AWS_SECRET,
+  // });
 
   // Save imageUrl to DB
-  const saveUploadToDb = async (imgString) => {
+  const saveGalleryUploadToDb = async (imgString) => {
     // Check if file allready exists in db
     const fileExists = await Upload.findOne({ imageUrl: imgString });
 
@@ -116,8 +179,8 @@ uploadRouter.post("/gallery", verify, async (req, res) => {
         let key = `${req.user.id}/${newFileName}`;
         const imageString = `https://face-watch.s3.amazonaws.com/${key}`;
 
-        await saveUploadToDb(imageString);
-        await uploadFile(key, files.image[i].data);
+        await saveGalleryUploadToDb(imageString);
+        await uploadFile(key, files.image[i].data, bucket);
       }
     } else {
       // Set image name and image data
@@ -139,8 +202,8 @@ uploadRouter.post("/gallery", verify, async (req, res) => {
       const imageString = `https://face-watch.s3.amazonaws.com/${key}`;
       console.log("single");
 
-      await saveUploadToDb(imageString);
-      await uploadFile(key, filedata);
+      await saveGalleryUploadToDb(imageString);
+      await uploadFile(key, filedata, bucket);
     }
     console.log("done");
     res.json({

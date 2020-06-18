@@ -13,6 +13,7 @@ const config = require("./utils/config");
 // const Router = require('./controllers/index')
 const authRouter = require("./controllers/auth");
 const uploadRouter = require("./controllers/file-upload");
+const profileRouter = require("./controllers/profile");
 
 const app = express();
 
@@ -43,5 +44,6 @@ app.use(fileUpload());
 // DEFINE ROUTES
 app.use("/api/users", authRouter);
 app.use("/api/file-upload", uploadRouter);
+app.use("/api/profiles", profileRouter);
 
 module.exports = app;
