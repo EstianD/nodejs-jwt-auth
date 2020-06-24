@@ -1,3 +1,7 @@
+## Description
+
+This is the backend code for the face-watch app. Refer to the face-watch-frontend(https://github.com/EstianD/face-watch-react) repo for a better description of the project.
+
 ## Scripts
 
 In the project directory:
