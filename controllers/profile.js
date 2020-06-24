@@ -14,14 +14,16 @@ const s3 = new AWS.S3({
   secretAccessKey: config.AWS_SECRET,
 });
 
+// Get profiles route
+// @route POST api/profiles
+// @desc retrieve profiles for user
+// @access Public
 profileRouter.get("/profiles", verify, async (req, res) => {
   try {
-    console.log("profiles");
     const userId = req.user.id;
     const profileArray = [];
     let profileObj = {};
-    // console.log("hello");
-    console.log(userId);
+
     const profiles = await Profile.find({ userId: userId });
 
     profiles.map((profile) => {
@@ -42,8 +44,11 @@ profileRouter.get("/profiles", verify, async (req, res) => {
   }
 });
 
+// Get Facial matches for profiles
+// @route GET api/profiles
+// @desc Get matches for profiles
+// @access Public
 profileRouter.get("/getProfileMatches", verify, async (req, res) => {
-  console.log("matches");
   const userId = req.user.id;
   // Object with profile with matches
   const profileObject = {};
@@ -54,7 +59,6 @@ profileRouter.get("/getProfileMatches", verify, async (req, res) => {
     );
 
     const data = resp.data;
-    console.log(data);
 
     // Get all uploads from user
     // Store uploads imageUrls in array
@@ -65,7 +69,7 @@ profileRouter.get("/getProfileMatches", verify, async (req, res) => {
       uploadsArr.push(upload.imageUrl);
     });
 
-    // console.log("data: " + data["profiles"].length);
+    // Loop through profiles
     for (i = 0; i < data["profiles"].length; i++) {
       let matchArr = [];
 
@@ -73,13 +77,11 @@ profileRouter.get("/getProfileMatches", verify, async (req, res) => {
         imageName: data["profiles"][i]["source"],
       });
 
-      // console.log("source: " + data["profiles"][i]["source"]);
       let profileMatches = data["profiles"][i]["matches"];
       for (x = 0; x < profileMatches.length; x++) {
-        // console.log("match: " + profileMatches[x]);
+        // Match profile name with corresponding image
         let matchR = uploadsArr.find((res) => res.includes(profileMatches[x]));
         matchArr.push(matchR);
-        // console.log("Match: " + matchR);
       }
 
       let profileObj = {
@@ -88,30 +90,24 @@ profileRouter.get("/getProfileMatches", verify, async (req, res) => {
         matches: matchArr,
       };
       collectionArray.push(profileObj);
-
-      // console.log(data["profiles"][i]["matches"]);
     }
-    // console.log(collectionArray);
 
     res.json(collectionArray);
   } catch (err) {
     console.log(err);
   }
-  // res.json({
-  //   msg: "profile test",
-  // });
 });
 
-// Delete Router
+// Delete profile route
+// @route POST api/profiles
+// @desc Delete a specific profile
+// @access Public
 profileRouter.post("/delete", verify, async (req, res) => {
   const profileId = req.body.id;
   const userId = req.user.id;
 
-  console.log("user: " + userId);
-  console.log("profile: " + profileId);
   try {
     const profile = await Profile.findOne({ _id: profileId });
-    console.log(profile);
 
     const imageName = profile.imageName;
 
@@ -121,6 +117,7 @@ profileRouter.post("/delete", verify, async (req, res) => {
       Key: `${userId}/${imageName}`,
     };
 
+    // Remove profile from S3 bucket
     await s3.deleteObject(params).promise();
     await profile.remove();
 
@@ -128,14 +125,7 @@ profileRouter.post("/delete", verify, async (req, res) => {
       status: 200,
       msg: "ok",
     });
-    console.log(res);
-    console.log("done");
-
-    // Delete object from DB
-
-    // console.log(imageName);
   } catch (err) {
-    console.log(err);
     res.json({
       status: 500,
       msg: "Something went wrong!",

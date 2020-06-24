@@ -57,7 +57,7 @@ usersRouter.post("/register", async (req, res) => {
 
       console.log(colResponse);
       if (colResponse.status === 200) {
-        // COllection created successfully
+        // Collection created successfully
         res.json({ status: true });
       } else {
         res.json({
@@ -76,9 +76,6 @@ usersRouter.post("/register", async (req, res) => {
 // @desc Post login
 // @access Public
 usersRouter.post("/login", async (req, res) => {
-  // Destructure joi validation object
-  console.log(req.body);
-
   const data = {
     email: req.body.signinEmail,
     password: req.body.signinPassword,
@@ -123,8 +120,6 @@ usersRouter.post("/login", async (req, res) => {
     user: user,
     jwt: token,
   });
-
-  // res.header("auth-token", token).send(token);
 });
 
 // Get User route
@@ -135,12 +130,6 @@ usersRouter.get("/user", verify, (req, res) => {
   User.findById(req.user.id)
     .select("-password")
     .then((user) => res.json(user));
-});
-
-usersRouter.get("/get", async (req, res) => {
-  const users = await User.find({});
-  console.log(users);
-  res.json(users);
 });
 
 module.exports = usersRouter;

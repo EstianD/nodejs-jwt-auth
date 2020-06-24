@@ -4,13 +4,10 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const express = require("express");
 const fileUpload = require("express-fileupload");
-// const cookieSession = require('cookie-session')
 
 const config = require("./utils/config");
-// const auth = require('./utils/auth')
 
 // ROUTERS
-// const Router = require('./controllers/index')
 const authRouter = require("./controllers/auth");
 const uploadRouter = require("./controllers/file-upload");
 const profileRouter = require("./controllers/profile");
@@ -18,7 +15,6 @@ const profileRouter = require("./controllers/profile");
 const app = express();
 
 // MIDDLEWARE
-
 app.use(express.static(__dirname + "/public"));
 
 // BODY PARSER
